@@ -165,6 +165,16 @@ app.get('/api/:dbName/tables/:tableName',authenticateToken,checkDbOwnership,(req
     next(error)
   }
 })
+app.post('api/:dbName/:tableName/search',authenticateToken,checkDbOwnership,(req,res)=>{
+  const {col,q}=req.query;
+  const {tabel} = req.params
+  db.search(tabel,q,col)
+  .then(result=>{
+    if(!result)res.status(404).json({success:false,error:new Error('data tidak ditemukan')})
+    return res.json({success:true,message:'data ditemukan',data:result})
+  })
+  .catch(error=>res.status(500).json({success:false,error:new Error('Kesalahan server!',error)}))
+})
 // 2.POST REQUEST=================================================================================
 // CREATE DATABASE
 app.post('/api/databases',authenticateToken,valReqBody,(req,res,next)=>{
