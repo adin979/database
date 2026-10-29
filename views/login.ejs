@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login Page</title>
+</head>
+<body>
+    <div>
+        <h2>Login</h2>
+        <form >
+            <label for="uname">username</label>
+            <input type="text" name="uname" id="uname">
+            <label for="pwd">password</label>
+            <input type="pwd" name="pwd" id="pwd">
+            <button id="login">login</button>
+        </form>
+    </div>
+<script type="module">
+    document.querySelector('#login').addEventListener('click',(e)=>{
+        e.preventDefault()
+        const [username,password] = document.querySelectorAll(['#uname','#pwd'])
+        fetch('/api/login',{
+            method:'POST',
+            headers:{'Content-type':'application/json'},
+            body:JSON.stringify({
+                username:username.value,
+                password:password.value
+            })
+        })
+        .then(response=>response.json())
+        .then(result=>{
+            if(!result.token)alert('login gagal')
+            localStorage.setItem('token',result.token)
+            alert('login berhasil')
+        })
+    })
+
+</script>
+</body>
+</html>

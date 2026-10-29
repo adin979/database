@@ -19,7 +19,13 @@ export class Database{
         this.name = name
         this.tables = []
         this.owner = null
-        this._loadFromCloud()
+        // this._loadFromCloud()
+    }
+
+    static async init(name){
+        const db=new Database(name)
+        await db._loadFromCloud()
+        return db
     }
 
     static async createDatabase(dbName,ownerUserName){
@@ -52,18 +58,14 @@ export class Database{
         return this.tables.find(t=>t.name === tableName) || null
     }
 
-    async addColl(tableName,name,type,req=false,pk=false,ai=false){
+    async addCols(tableName,colVal){
         const table = this.getTable(tableName)
-        if(!table){
-            throw new Error('Table '+tableName+' tidak ditemukan!')
+        if(!table)throw new Error('Table '+tableName+' tidak ditemukan!')
+        if(Array.isArray(colVal)){colVal.forEach(c=>{
+            table.cols.push(c)
+        })}else{
+            table.cols.push(colVal)
         }
-        table.cols.push({
-            name:name,
-            type:type,
-            req:req,
-            pk:pk,
-            ai:ai
-        })
         await this._autoSave()
         return this
     }

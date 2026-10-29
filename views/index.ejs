@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Home Page</title>
+</head>
+<body>
+    <div>
+        <ul>
+            <li><a href="/register">Daftar</a></li>
+            <li><a href="/login">Login</a></li>
+        </ul>
+    </div>
+    <div>
+        <h2>Create Database</h2>
+        <form action="">
+            <label for="dbname">Database</label>
+            <input type="text" name="dbname" id="dbname">
+            <button id="db">Create</button>
+        </form>
+    </div>
+    <div>
+        <form action="">
+            <label for="tablename">Table Name</label>
+            <input type="text" name="tablename" id="tablename">
+            <label for="colcount">Column Count</label>
+            <input type="number" name="colcount" id="colcount" value="1" style="width: 2rem;">
+            <button class="confirm">Confirmasi</button>
+            <table id="tabelinput">
+                <thead >
+                    <th> name</th>
+                    <th>type</th>
+                    <th>req</th>
+                    <th>pk</th>
+                    <th>ai</th>
+                </thead>
+                <tbody class="colinput">
+                </tbody>
+            </table>
+            <button id="create" type="button">Create</button>
+        </form>
+    </div>
+    <script type="module">
+        document.getElementById('db').addEventListener('click',(e)=>{
+            e.preventDefault()
+            const dbName=document.getElementById('dbname').value
+            fetch('/api/databases',{
+                method:'POST',
+                headers:{
+                    'Content-type':'application/json',
+                    'Authorization':`Bearer ${localStorage.getItem('token')}`
+                },
+                body:JSON.stringify({dbName:dbName})
+            })
+            .then(response=>response.json())
+            .then(result=>{
+                if(!result.data)alert('gagal!',result)
+                localStorage.setItem('dbName',result.data.name)
+                alert('data berhasil disimpan!')
+            })
+            .catch(error=>error)
+        })
+
+        const colinput=document.querySelector('#tabelinput').getElementsByTagName('tbody')[0]
+
+        colinput.addEventListener('keydown',(e)=>{
+            if(e.key === 'Enter'&& e.target.tagName === 'INPUT'){
+                const currentInput = e.target
+                const currentTd = currentInput.closest('td')
+                const currentTr = currentInput.closest('tr')
+                const cells = Array.from(currentTr.cells)
+                const currentCellIndex = cells.indexOf(currentTd)
+                const nextTd = cells[currentCellIndex +1]
+                if(nextTd&&nextTd.querySelector('input')){
+                    nextTd.querySelector('input').focus()
+                }
+                else{
+                    const nextTr=currentTr.nextElementSibling
+                    if(nextTr&&nextTr.querySelector('input')){
+                        nextTr.querySelector('input').focus()
+                    }else{
+                        document.querySelector('#create').focus()
+                    }
+                }
+            }
+        })
+
+        const inputCount=(count)=>{
+            colinput.innerHTML=''
+            for (let i = 0; i < count; i++) {
+                const newRow=colinput.insertRow()
+                const rowName=newRow.insertCell(0)
+                const rowType=newRow.insertCell(1)
+                const rowReq=newRow.insertCell(2)
+                const rowPk=newRow.insertCell(3)
+                const rowAi=newRow.insertCell(4)
+                const inputname=document.createElement('input')
+                const inputtype=document.createElement('input')
+                const inputreq=document.createElement('input')
+                const inputpk=document.createElement('input')
+                const inputai=document.createElement('input')
+                inputname.type='text'
+                inputname.id=`name_${i+1}`
+                inputname.name=`name_${i+1}`
+                rowName.appendChild(inputname)
+                inputtype.type='text'
+                inputtype.id=`type_${i+1}`
+                inputtype.name=`type_${i+1}`
+                rowType.appendChild(inputtype)
+                inputreq.type='checkbox'
+                inputreq.id=`req_${i+1}`
+                inputreq.name=`req_${i+1}`
+                rowReq.appendChild(inputreq)
+                inputpk.type='checkbox'
+                inputpk.id=`pk_${i+1}`
+                inputpk.name=`pk_${i+1}`
+                rowPk.appendChild(inputpk)
+                inputai.type='checkbox'
+                inputai.id=`ai_${i+1}`
+                inputai.name=`ai_${i+1}`
+                rowAi.appendChild(inputai)
+            }
+        }
+        inputCount(1)
+        document.querySelector('.confirm').addEventListener('click',async(e)=>{
+            e.preventDefault();
+            const tableName=document.querySelector('#tablename').value
+            const dbName=localStorage.getItem('dbName')
+            const response = await fetch(`/api/${dbName}/tables`,{
+                method:'POST',
+                headers:{
+                    'Content-type':'application/json',
+                    'Authorization':`Bearer ${localStorage.getItem('token')}`
+                },
+                body:JSON.stringify({tableName:tableName})
+            })
+            if(!response.ok)alert('Tabel gagal dibuat')
+            const count = parseInt(document.getElementById('colcount').value)
+            inputCount(count)
+        })
+
+        document.querySelector('#create').addEventListener('click',async()=>{
+            const arr=[]
+            const rows = colinput.querySelectorAll('tr')
+            rows.forEach((r,i)=>{
+                const obj={}
+                const nameVal=r.querySelector(`#name_${i+1}`).value
+                const typeVal=r.querySelector(`#type_${i+1}`).value.toUpperCase()
+                const reqVal=r.querySelector(`#req_${i+1}`).checked
+                const pkVal=r.querySelector(`#pk_${i+1}`).checked
+                const aiVal=r.querySelector(`#ai_${i+1}`).checked
+                obj['name']=nameVal
+                obj['type']=typeVal?.toUpperCase()
+                obj['req']=reqVal
+                obj['pk']=pkVal
+                obj['ai']=aiVal
+                arr.push(obj)
+            })
+            const dbName = localStorage.getItem('dbName')
+            const tableName=document.querySelector('#tablename').value
+            try {
+                const result = await fetch(`/api/${dbName}/${tableName}/cols`,{
+                    method:'POST',
+                    headers:{
+                        'Content-type':'application/json',
+                        'Authorization':`Bearer ${localStorage.getItem('token')}`
+                    },
+                    body:JSON.stringify(arr)
+                })
+                if(!result.ok)return alert('penyimpanan gagal')
+                    alert('tabel dan kolom berhasil disimpan')
+                    // document.querySelector('#tablename').value=''
+                    // colinput.innerHTML=''
+                    // document.querySelector('#tablename').focus()
+            } catch (error) {
+                console.error('Terjadi kesalahan server',error)
+            }
+        })
+    </script>
+</body>
+</html>

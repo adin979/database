@@ -2,14 +2,15 @@ import jwt from 'jsonwebtoken'
 import { Database } from './database.js'
 const JWT_SECRET = 'kunci_jwt'
 
-export function checkDbOwnership(req,res,next){
-    const {dbName} = req.params
-    const currentUser = req.user.username
-
-    if(!dbName)return res.status(400).json({success:false,error:'Nama Database tidak valid'});
-
+export async function checkDbOwnership(req,res,next){
     try {
-        const db = new Database(dbName)
+        const {dbName} = req.params
+        const currentUser = req.user.username
+
+        if(!dbName)return res.status(400).json({success:false,error:'Nama Database tidak valid'});
+        const db=await Database.init(dbName)
+
+        if(!db.owner)res.status(404).json({success:false,error:'Database tidak ditemukan!'})
         if(db.owner&&db.owner !== currentUser){
             return res.status(403).json({
                 success:false,
@@ -21,7 +22,7 @@ export function checkDbOwnership(req,res,next){
     } catch (error) {
         return res.status(404).json({
             success:false,
-            error:`Database ${dbName} tidak ditemukan`
+            error:error.message
         })
     }
 }

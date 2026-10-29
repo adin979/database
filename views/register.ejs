@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register Page</title>
+</head>
+<body>
+    <div>
+        <h2>Register</h2>
+        <form >
+            <label for="username">username</label>
+            <input type="text" name="username" id="username">
+            <label for="password">password</label>
+            <input type="password" name="password" id="password">
+            <button id="reg">daftar</button>
+        </form>
+    </div>
+    <script>
+        document.querySelector('#reg').addEventListener('click',(e)=>{
+            e.preventDefault()
+            const [username,password] = document.querySelectorAll(['#username','#password'])
+            fetch('/api/register',{
+                method:'POST',
+                headers:{'Content-type':'application/json'},
+                body:JSON.stringify({
+                    username:username.value,
+                    password:password.value
+                })
+            })
+            .then(response=>response.json)
+            .then(result=>{
+                if(!result.ok)alert('registrasi gagal!')
+              alert('Registrasi berhasil!')  
+            })
+            .catch(error=>{throw error})
+        })
+    </script>
+</body>
+</html>
