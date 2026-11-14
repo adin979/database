@@ -1,5 +1,5 @@
 import mongoose from 'mongoose';
-import { connectDB } from './connection';
+import { connectDB } from './connection.js';
 
 const dynamicDbSchema = new mongoose.Schema({
     name:{type:String,required:true,unique:true},
