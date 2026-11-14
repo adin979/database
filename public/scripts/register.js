@@ -1,22 +1,16 @@
 import customFetch from "./customFetch.js"
 
-export default{
-    title:'Register Page',
-    async getTemplate(){
-        const response =await fetch('./views/register.html')
-        return await response.text()
-    },
-    init(root,state){
-        root.querySelector('#reg').addEventListener('submit',(e)=>{
+export default function register(){
+        document.querySelector('#reg').addEventListener('submit',(e)=>{
             e.preventDefault()
             const [username,password] = e.target.elements
-            state.username=username.value
-            state.password=password.value
+            const uname=username.value
+            const pass=password.value
             customFetch('/api/system/register',{
                 method:'POST',
                 body:{
-                    username:state.username,
-                    password:state.password
+                    username:uname,
+                    password:pass
                 }
             })
             .then(response=>response.json())
@@ -26,8 +20,8 @@ export default{
                 customFetch('/api/system/login',{
                     method:'POST',
                     body:{
-                        username:state.username,
-                        password:state.password
+                        username:uname,
+                        password:pass
                     }
                 })
                 .then(response=>response.json())
@@ -41,4 +35,3 @@ export default{
             .catch(error=>console.log(error))
         })
     }
-}

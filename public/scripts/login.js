@@ -1,13 +1,7 @@
 import customFetch from "./customFetch.js"
 
-export default{
-    title:'Login Page',
-    async getTemplate(){
-        const response=await fetch('./views/login.html')
-        return await response.text()
-    },
-    init(root,state){
-        root.querySelector('#form-login').addEventListener('submit',(e)=>{
+export default function init(){
+        document.querySelector('#form-login').addEventListener('submit',(e)=>{
             e.preventDefault()
             const [uname,pwd] = e.target.elements
             customFetch('/api/system/login',{
@@ -27,4 +21,3 @@ export default{
             .catch(error=>alert(error.error))
         })
     }
-}

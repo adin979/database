@@ -1,4 +1,4 @@
-import mongoose from 'mongoose';
+// import mongoose from 'mongoose';
 import { connectDB } from './connection.js';
 
 const dynamicDbSchema = new mongoose.Schema({

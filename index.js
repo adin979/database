@@ -44,8 +44,8 @@ async function initSystemDb() {
       if(!userTable){
         await db.createTable('user');
         await db.addCols('user',[
-          {name:'id',type:'INT',req:true,pk:true,ai:true},
-          {name:'username',type:'VARCHAR(50)',req:true,pk:false,ai:false},
+          {name:'id',type:'INT',req:true,uniq:true,pk:true,ai:true},
+          {name:'username',type:'VARCHAR(50)',req:true,uniq:true,pk:false,ai:false},
           {name:'password',type:'TEXT',req:true,pk:false,ai:false}
         ])
       }else{console.log('table sudah ada')}
@@ -56,8 +56,8 @@ async function initSystemDb() {
 }
 await initSystemDb()
 
-const JWT_SECRET = process.env.SIGN_JWT_SECRET
-const REFRESH_JWT_SECRET = process.env.RESIGN_JWT_SECRET
+const JWT_SECRET = process.env.ACCESS_TOKEN_SECRET
+const REFRESH_JWT_SECRET = process.env.REFRESH_ACCESS_TOKEN
 
 
 // LOGIN REGISTER TOKEN=========================================
@@ -225,7 +225,8 @@ app.post('/api/databases',authenticateToken,valReqBody,async(req,res,next)=>{
     const ownerUsername = req.user.username
     if(!dbName)return res.status(400).json({success:false,error:'dbName harus diisi'});
     try{
-    const data = await database.createDatabase(ownerUsername)
+      const db=database(dbName)
+    const data = await db.createDatabase(ownerUsername)
       res.status(201).json({
         success:true,
         message:`Database ${dbName} berhasil dibuat`,
@@ -252,9 +253,9 @@ app.post('/api/db/:dbName/tables',authenticateToken,checkDbOwnership,valReqBody,
     const {tableName} = req.body
     const db = req.db
     if(!tableName || tableName === undefined || tableName === null || tableName === '')throw new Error('Harus diisi');
-    const table =await database.getTable(tableName) 
+    const table =await db.getTable(tableName) 
     if(table)return res.status(409).json({success:false,error:`tabel ${tableName} sudah ada!`})
-    const data=await database.createTable(tableName)
+    const data=await db.createTable(tableName)
       res.status(201).json({
         success:true,
         message:`Table ${tableName} berhasil dibuat`,
@@ -355,7 +356,10 @@ const refreshTokenTable=async()=>{
 app.get('/api/:dbname',(req,res,next)=>res.send('api ok'))
 
 // VIEW ROUTES=================================================
-app.get('/', (req, res) => res.send('index'));
+app.get('/', (req, res) => res.render('index'));
+app.get('/create', (req, res) => res.render('create'));
+app.get('/login', (req, res) => res.render('login'));
+app.get('/register', (req, res) => res.render('register'));
 
 app.use(errorHandler)
 

@@ -1,6 +1,6 @@
 import jwt from 'jsonwebtoken'
 import { database } from './database.js'
-const JWT_SECRET = process.env.SIGN_JWT_SECRET
+const JWT_SECRET = process.env.ACCESS_TOKEN_SECRET
 
 export async function checkDbOwnership(req,res,next){
     try {
