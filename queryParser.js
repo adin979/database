@@ -41,6 +41,7 @@ class SqlParser{
         const t1 = dbDoc.tables.find(t=>t.name === tableName);
         if(!t1)throw new Error(`Table ${tableName} tidak ditemukan!`);
         let rows=[...t1.rows]
+        if(rows.length < 1)throw new Error('Data row kosong!')
         const joinMatch=sql.trim().match(joinPattern)
         if(joinMatch){
             const [,table2,joinCol1,joinCol2]=joinMatch
