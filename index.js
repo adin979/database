@@ -351,7 +351,7 @@ const refreshTokenTable=async()=>{
 app.get('/api/:dbname',(req,res,next)=>res.send('api ok'))
 
 // VIEW ROUTES=================================================
-app.get('/', (req, res) => res.render('index',{urlPath:req.path,title:'Home Page'}));
+app.get('/', (req, res) => res.send('index'));
 
 app.use(errorHandler)
 
