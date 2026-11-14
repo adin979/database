@@ -1,5 +1,4 @@
-// import mongoose from 'mongoose';
-import { connectDB } from './connection.js';
+import {mongoose, connectDB } from './connection.js';
 
 const dynamicDbSchema = new mongoose.Schema({
     name:{type:String,required:true,unique:true},
@@ -13,7 +12,8 @@ const dynamicDbSchema = new mongoose.Schema({
     ]
 },{timestamps:true})
 
-export const CloudDatabaseModel = mongoose.model('CloudDatabase',dynamicDbSchema)
+export const CloudDatabaseModel = mongoose.models.CloudDatabase || mongoose.model('CloudDatabase', dynamicDbSchema)
+
 
 export function database(dbName){
     connectDB()

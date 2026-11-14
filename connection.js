@@ -23,3 +23,4 @@ export const connectDB = async () => {
 
     return mongoose.connection;
 };
+export {mongoose}
