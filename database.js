@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { connectDB } from './connection';
 
 const dynamicDbSchema = new mongoose.Schema({
     name:{type:String,required:true,unique:true},
@@ -15,6 +16,7 @@ const dynamicDbSchema = new mongoose.Schema({
 export const CloudDatabaseModel = mongoose.model('CloudDatabase',dynamicDbSchema)
 
 export function database(dbName){
+    connectDB()
     return{
         name:dbName,
         async createDatabase(ownerUserName){
@@ -29,6 +31,7 @@ export function database(dbName){
             return await newDbDoc.save();
         },
         async getDatabase(){
+            await connectDB()
             const dbDoc = await CloudDatabaseModel.findOne({name:this.name})
             if(!dbDoc)throw new Error(`Database ${this.name} tidak ditemukan`);
             return dbDoc;

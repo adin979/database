@@ -15,7 +15,6 @@ import SqlParser from './queryParser.js';
 const app = express();
 const port = process.env.PORT|| 3000;
 app.use(express.json())
-await connectDB()
 app.use(cors({
   origin:'http://localhost:5173',
   credentials:true,
@@ -30,6 +29,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.set('view engine','ejs')
 
 async function initSystemDb() {
+  await connectDB()
   try {
     const db = database('system')
     let systemDb 
@@ -65,6 +65,7 @@ app.post('/api/:dbName/register',valReqBody,async(req,res,next)=>{
   try {
     const {dbName}=req.params
     const {username,password}=req.body
+    await connectDB()
     const db=database(dbName)
     const userTable=await db.getTable('user');
     const existingUser=userTable.rows.find(u=>u.username === username);
@@ -86,45 +87,46 @@ app.post('/api/:dbName/register',valReqBody,async(req,res,next)=>{
 app.post('/api/:dbName/login',valReqBody,async(req,res,next)=>{
   try{
     const {dbName}=req.params
-  const {username,password} = req.body
-  const db=database(dbName)
-  let dbDoc = await db.getDatabase()
-  const userTable =dbDoc.tables.find(t=>t.name === 'user')
-  const user = userTable.rows.find(u=>u.username === username)
-  if(!user){
-    return res.status(400).json({success:false,error:`user ${username} tidak ketemu`})
-  }
-  const validPassword = await bcrypt.compare(password, user.password)
-  if(!validPassword){return res.status(400).json({success:false,error:'password salah'})}
-  const token = jwt.sign(
-    {
-      id:user.id,
-      username:user.username
-    },
-    JWT_SECRET,
-    {expiresIn:'15m'})
-  const refreshToken = jwt.sign(
-    {
-      id:user.id,
-      username:user.username
-    },
-    REFRESH_JWT_SECRET,
-    {expiresIn:'7d'})
-    await refreshTokenTable();
-    dbDoc=await db.getDatabase()
-    const tableRT=dbDoc.tables.find(t=>t.name === 'refresh_tokens')
-    const isExist=tableRT.rows.find(r=>r.username===username)
-    if(isExist)await db.delete('refresh_tokens',isExist.id);
-    await db.insert('refresh_tokens',{username:user.username,token:refreshToken})
+    const {username,password} = req.body
+    await connectDB()
+    const db=database(dbName)
+    let dbDoc = await db.getDatabase()
+    const userTable =dbDoc.tables.find(t=>t.name === 'user')
+    const user = userTable.rows.find(u=>u.username === username)
+    if(!user){
+      return res.status(400).json({success:false,error:`user ${username} tidak ketemu`})
+    }
+    const validPassword = await bcrypt.compare(password, user.password)
+    if(!validPassword){return res.status(400).json({success:false,error:'password salah'})}
+    const token = jwt.sign(
+      {
+        id:user.id,
+        username:user.username
+      },
+      JWT_SECRET,
+      {expiresIn:'15m'})
+    const refreshToken = jwt.sign(
+      {
+        id:user.id,
+        username:user.username
+      },
+      REFRESH_JWT_SECRET,
+      {expiresIn:'7d'})
+      await refreshTokenTable();
+      dbDoc=await db.getDatabase()
+      const tableRT=dbDoc.tables.find(t=>t.name === 'refresh_tokens')
+      const isExist=tableRT.rows.find(r=>r.username===username)
+      if(isExist)await db.delete('refresh_tokens',isExist.id);
+      await db.insert('refresh_tokens',{username:user.username,token:refreshToken})
 
-    res.cookie('refreshToken',refreshToken,{
-      httpOnly:true,
-      secure:false,
-      sameSite:'strict',
-      maxAge:7*24*60*60*1000
-    })
+      res.cookie('refreshToken',refreshToken,{
+        httpOnly:true,
+        secure:false,
+        sameSite:'strict',
+        maxAge:7*24*60*60*1000
+      })
 
-    res.json({success:true,message:'berhasil',token:token})
+      res.json({success:true,message:'berhasil',token:token})
   }catch(error){res.status(505).json({success:false,error:error.message})}
 })
 
@@ -132,6 +134,7 @@ app.post('/api/:dbName/refresh-token',async(req,res)=>{
   const {dbName}=req.params
   const refreshToken = req.cookies.refreshToken
   if(!refreshToken)return res.status(401).json({success:false,error:'refresh cookie tidak ditemukan'});
+  await connectDB()
   const db=database(dbName)
   const dbDoc = await db.getDatabase()
   const refreshTable = dbDoc.tables.find(t=>t.name === 'refresh_tokens') 
@@ -157,6 +160,7 @@ app.post('/api/:dbName/refresh-token',async(req,res)=>{
 app.get('/api/databases',authenticateToken,async(req,res,next)=>{
   try {
     const currentUser=req.user.username
+    await connectDB()
     const data = await CloudDatabaseModel.findOne({owner:currentUser})
     if(!data)return res.status(404).json({success:false,error:'Data tidak bisa ditemukan'})
     return res.json({success:true,message:'Data berhasil ditemukan',databases:data})
