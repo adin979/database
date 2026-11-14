@@ -1,8 +1,6 @@
 import 'dotenv/config'
 import mongoose from "mongoose"
 
-import mongoose from 'mongoose';
-
 let connectionPromise = null;
 
 export const connectDB = async () => {
