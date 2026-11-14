@@ -1,14 +1,14 @@
 import express from 'express'
 import bcrypt from 'bcrypt'
 import jwt from 'jsonwebtoken'
-import { CloudDatabaseModel, Database } from './database.js';
+import { CloudDatabaseModel, database } from './database.js';
 import { authenticateToken, valReqBody,errorHandler,checkDbOwnership } from './middleware.js';
 import cors from 'cors'
 import cookieParser from 'cookie-parser'
 import {connectDB} from './connection.js';
 import path from 'path'
 import { fileURLToPath } from 'url';
-import { error } from 'console';
+import SqlParser from './queryParser.js';
 
 
 
@@ -29,43 +29,48 @@ const __dirname = path.dirname(__filename)
 app.use(express.static(path.join(__dirname, 'public')));
 app.set('view engine','ejs')
 
-let systemDb;
 async function initSystemDb() {
   try {
-    systemDb=new Database('system')
-    if(typeof systemDb._loadFromCloud === 'function')await systemDb._loadFromCloud();
-  } catch (error) {
-    if(typeof Database.createDatabase === 'function')await Database.createDatabase('system','ADMIN')
-    systemDb = new Database('system')
-  }
-  
-  if(!systemDb.getTable('user')){
-    await systemDb.createTable('user')
-    await systemDb.addCols('user',[
-      {name:'id',type:'INT',req:true,pk:true,ai:true},
-      {name:'username',type:'VARCHAR(50)',req:true,pk:false,ai:false},
-      {name:'password',type:'TEXT',req:true,pk:false,ai:false}
-    ])
+    const db = database('system')
+    let systemDb 
+    try {
+      systemDb=await db.getDatabase()
+    } catch (error) {
+      await db.createDatabase('Admin')
+      systemDb=await db.getDatabase()
+      console.log('Database sistem berhasil dibuat')
+    }
+      const userTable=await db.getTable('user')
+      if(!userTable){
+        await db.createTable('user');
+        await db.addCols('user',[
+          {name:'id',type:'INT',req:true,pk:true,ai:true},
+          {name:'username',type:'VARCHAR(50)',req:true,pk:false,ai:false},
+          {name:'password',type:'TEXT',req:true,pk:false,ai:false}
+        ])
+      }else{console.log('table sudah ada')}
+    } catch (error) {
+      const db=await db.getTable('user')
+    console.error('Gagal inisiasi system DB : ',db)
   }
 }
 await initSystemDb()
 
-const JWT_SECRET = 'kunci_jwt'
-const REFRESH_JWT_SECRET = 'kunci_jwt'
-app.get('/', (req, res) => res.render('index'));
-app.get('/login',(req,res)=>res.render('login'))
-app.get('/register',(req,res)=>res.render('register'))
+const JWT_SECRET = process.env.SIGN_JWT_SECRET
+const REFRESH_JWT_SECRET = process.env.RESIGN_JWT_SECRET
+
 
 // LOGIN REGISTER TOKEN=========================================
-app.post('/api/register',valReqBody,async(req,res,next)=>{
+app.post('/api/:dbName/register',valReqBody,async(req,res,next)=>{
   try {
+    const {dbName}=req.params
     const {username,password}=req.body
-    console.log(systemDb)
-    const userTable=systemDb.getTable('user');
+    const db=database(dbName)
+    const userTable=await db.getTable('user');
     const existingUser=userTable.rows.find(u=>u.username === username);
-    if(existingUser)return res.status(400).json({success:false,error:'username sudah digunakan'});
+    if(existingUser)return res.status(400).json({success:false,error:`username ${username} sudah digunakan`});
     const hashedPassword=await bcrypt.hash(String(password),10);
-    const newUser= await systemDb.insert('user',{
+    const newUser= await db.insert('user',{
       username:username,
       password:hashedPassword
     });
@@ -78,12 +83,16 @@ app.post('/api/register',valReqBody,async(req,res,next)=>{
     next(error)
   }
 })
-app.post('/api/login',valReqBody,async(req,res)=>{
+app.post('/api/:dbName/login',valReqBody,async(req,res,next)=>{
+  try{
+    const {dbName}=req.params
   const {username,password} = req.body
-  const userTable = systemDb.getTable('user')
+  const db=database(dbName)
+  let dbDoc = await db.getDatabase()
+  const userTable =dbDoc.tables.find(t=>t.name === 'user')
   const user = userTable.rows.find(u=>u.username === username)
   if(!user){
-    return res.status(400).json({success:false,error:'user tidak ketemu',message:`userTable : ${userTable}`})
+    return res.status(400).json({success:false,error:`user ${username} tidak ketemu`})
   }
   const validPassword = await bcrypt.compare(password, user.password)
   if(!validPassword){return res.status(400).json({success:false,error:'password salah'})}
@@ -101,13 +110,12 @@ app.post('/api/login',valReqBody,async(req,res)=>{
     },
     REFRESH_JWT_SECRET,
     {expiresIn:'7d'})
-
-    const tableRT=systemDb.getTable('refresh_tokens')
-    if(!tableRT)refreshTokenTable(systemDb);
-    const isExist=tableRT?.rows.find(r=>r.username===username)
-    if(isExist)systemDb.delete('refresh_tokens',isExist.id);
-
-    systemDb.insert('refresh_tokens',{username:user.username,token:refreshToken})
+    await refreshTokenTable();
+    dbDoc=await db.getDatabase()
+    const tableRT=dbDoc.tables.find(t=>t.name === 'refresh_tokens')
+    const isExist=tableRT.rows.find(r=>r.username===username)
+    if(isExist)await db.delete('refresh_tokens',isExist.id);
+    await db.insert('refresh_tokens',{username:user.username,token:refreshToken})
 
     res.cookie('refreshToken',refreshToken,{
       httpOnly:true,
@@ -117,22 +125,25 @@ app.post('/api/login',valReqBody,async(req,res)=>{
     })
 
     res.json({success:true,message:'berhasil',token:token})
+  }catch(error){res.status(505).json({success:false,error:error.message})}
 })
 
-app.post('/api/refresh-token',(req,res)=>{
+app.post('/api/:dbName/refresh-token',async(req,res)=>{
+  const {dbName}=req.params
   const refreshToken = req.cookies.refreshToken
   if(!refreshToken)return res.status(401).json({success:false,error:'refresh cookie tidak ditemukan'});
-  const refreshTable =systemDb.getTable('refresh_tokens')
+  const db=database(dbName)
+  const dbDoc = await db.getDatabase()
+  const refreshTable = dbDoc.tables.find(t=>t.name === 'refresh_tokens') 
   const savedToken = refreshTable.rows.find(t=>t.token === refreshToken)
   if(!savedToken)return res.status(403).json({success:false,error:'refresh token tidak valid!'});
-  
-  jwt.verify(refreshToken,REFRESH_JWT_SECRET,(error,decocedUser)=>{
+  jwt.verify(refreshToken,REFRESH_JWT_SECRET,async(error,decocedUser)=>{
     if(error){
-      systemDb.delete('refresh_tokens',savedToken.id)
+      await db.delete('refresh_tokens',savedToken.id)
       res.clearCookie('refreshToken')
       return res.status(403).json({success:false,error:'Sesi kadaluarsa, silahkan login ulang'})
     }
-    const newAccessToken = jwt.sign(
+    const newAccessToken = await jwt.sign(
       {id:decocedUser.id,username : decocedUser.username},
       JWT_SECRET,
       {expiresIn:'15m'}  
@@ -143,78 +154,103 @@ app.post('/api/refresh-token',(req,res)=>{
 // auth===========================================================================================
 
 // 1. GET ALL DATABASES===========================================================================
-app.get('/api/databases',authenticateToken,(req,res,next)=>{
+app.get('/api/databases',authenticateToken,async(req,res,next)=>{
   try {
     const currentUser=req.user.username
-    CloudDatabaseModel.findOne({owner:currentUser})
-    .then(data=>res.json({success:true,databases:data}))
-    .catch(next)
+    const data = await CloudDatabaseModel.findOne({owner:currentUser})
+    if(!data)return res.status(404).json({success:false,error:'Data tidak bisa ditemukan'})
+    return res.json({success:true,message:'Data berhasil ditemukan',databases:data})
   } catch (error) {
-    
+    next(error)
   }
 })
 
-app.get('/api/:dbName/tables',authenticateToken,checkDbOwnership,(req,res,next)=>{
+// Belum dicheck=================
+app.get('/api/db/:dbName/tables',authenticateToken,checkDbOwnership,(req,res,next)=>{
   try {
     const db = req.db;
-    const tableName = db.tables.map(t=>t.name);
+    const table = db.getDatabase().tables;
     res.json({
       success:true,
       database:db.name,
-      tables:tableName
+      tables:table
     })
   } catch (error) {
     next(error)
   }
 })
 
-app.get('/api/:dbName/tables/:tableName',authenticateToken,checkDbOwnership,(req,res,next)=>{
+app.get('/api/db/:dbName/tables/:tableName',authenticateToken,checkDbOwnership,async(req,res,next)=>{
   try {
     const {tableName} = req.params;
-    const db = req.db;
-    const table = db.getTable(tableName);
+    const dbDoc = req.dbDoc;
+    const table = dbDoc.tables.find(t=>t.name === tableName);
     if(!table)return res.status(404).json({success:false,error:`Tabel ${tableName} tidak ditemukan`});
-    res.json({success:true,message:`data dari tabel ${table} `,table:tableName,total:table.rows.length,data:table.rows})
+    res.json({success:true,message:`Data dari tabel ${table.name}, dengan total ${table.rows.length} `,data:{tableName:table.name,rows:table.rows}})
   } catch (error) {
     next(error)
   }
 })
-app.get('/api/:dbName/:tableName/search',authenticateToken,checkDbOwnership,(req,res)=>{
+app.get('/api/db/:dbName/table/:tableName/search',authenticateToken,checkDbOwnership,async(req,res,next)=>{
+  try{
   const {col,q}=req.query;
   const {tableName} = req.params
   const db = req.db
-  db.search(tableName,q,col)
-  .then(result=>{
-    if(!result||result.length===0)res.status(404).json({success:false,error:new Error('data tidak ditemukan')})
+  const result =await db.search(tableName,q,col)
+    if(!result||result.length<=0)return res.status(404).json({success:false,error:new Error('data tidak ditemukan')});
     return res.json({success:true,message:'data ditemukan',data:result})
+  }catch(error){next(error)}
+})
+
+app.get('/api/db/:dbName/table/:tableName/data',authenticateToken,checkDbOwnership,(req,res,next)=>{
+  const {tableName} = req.params
+  const page=parseInt(req.query.page)||1
+  const limit = parseInt(req.query.limit)||10
+  const db = req.db
+  return db.getPaginateData(tableName,page,limit)
+  .then(result=>{
+    if(!result)return res.status(404).json({success:false,error:'data tidak ditemukan'});
+    return res.json({success:true,...result})
   })
-  .catch(error=>res.status(500).json({success:false,error:new Error('Kesalahan server!',error)}))
+  .catch(error=>res.status(500).json({success:false,error:error.message}))
 })
 // 2.POST REQUEST=================================================================================
 // CREATE DATABASE
-app.post('/api/databases',authenticateToken,valReqBody,(req,res,next)=>{
+app.post('/api/databases',authenticateToken,valReqBody,async(req,res,next)=>{
     const {dbName} = req.body
     const ownerUsername = req.user.username
-    if(!dbName)res.status(400).json({success:false,error:'dbName harus diisi'});
-    Database.createDatabase(dbName,ownerUsername)
-    .then(data=>{
+    if(!dbName)return res.status(400).json({success:false,error:'dbName harus diisi'});
+    try{
+    const data = await database.createDatabase(ownerUsername)
       res.status(201).json({
         success:true,
         message:`Database ${dbName} berhasil dibuat`,
         data:data
       })
-    })
-    .catch(next)
+    }catch(error){next(error)}
+})
+
+app.post('/api/db/:dbName',authenticateToken,checkDbOwnership,valReqBody,(req,res,next)=>{
+  const db = req.db
+  const {query} = req.body
+  const queryParser = new SqlParser(db)
+  return queryParser.query(query)
+  .then(result=>{
+    if(!result)return res.status(404).json({success:false,error:`Data tidak ditemukan!`});
+    return res.json({success:true,message:`Data berhasil diambil`,data:result})
+  })
+  .catch(error=>res.status(500).json({success:false,error:error.message}))
 })
 
 // api buat table
-app.post('/api/:dbName/tables',authenticateToken,checkDbOwnership,valReqBody,async(req,res,next)=>{
+app.post('/api/db/:dbName/tables',authenticateToken,checkDbOwnership,valReqBody,async(req,res,next)=>{
   try{
     const {tableName} = req.body
     const db = req.db
     if(!tableName || tableName === undefined || tableName === null || tableName === '')throw new Error('Harus diisi');
-    if(db.getTable(tableName))res.status(409).json({success:false,error:`tabel ${tableName} sudah ada!`})
-    const data= db.createTable(tableName)
+    const table =await database.getTable(tableName) 
+    if(table)return res.status(409).json({success:false,error:`tabel ${tableName} sudah ada!`})
+    const data=await database.createTable(tableName)
       res.status(201).json({
         success:true,
         message:`Table ${tableName} berhasil dibuat`,
@@ -223,25 +259,31 @@ app.post('/api/:dbName/tables',authenticateToken,checkDbOwnership,valReqBody,asy
     }
     catch(error){next(error)}
 })
+
+app.post('/api/db/dbName/table/tableName',authenticateToken,checkDbOwnership,valReqBody,async(req,res)=>{
+  const {dbName,tableName} = req.params
+  const {strQuery} = req.body
+  console.log(strQuery)
+})
 // TAMBAH KOLOM============================
-app.post('/api/:dbName/:tableName/cols',authenticateToken,checkDbOwnership,valReqBody,async(req,res,next)=>{
+app.post('/api/db/:dbName/table/:tableName/cols',authenticateToken,checkDbOwnership,valReqBody,async(req,res,next)=>{
   try{
-    const {tableName} = req.params;
+    const {dbName,tableName} = req.params;
     const colVal = req.body
     const db = req.db
     const data=await db.addCols(tableName,colVal)
       res.status(201).json({
         success:true,
         message:`Kolom berhasil ditambahkan ke tabel '${tableName}'`,
-        cols:data
+        data:{table:data}
       })
     }catch(error){
       next(error)
     }
 })
 
-// api tambah data
-app.post('/api/:dbName/tables/:tableName',authenticateToken,checkDbOwnership,valReqBody,async(req,res,next)=>{
+// api tambah data (INSERT)
+app.post('/api/db/:dbName/tables/:tableName',authenticateToken,checkDbOwnership,valReqBody,async(req,res,next)=>{
   try {
     const {tableName} = req.params;
     const db = req.db
@@ -249,59 +291,67 @@ app.post('/api/:dbName/tables/:tableName',authenticateToken,checkDbOwnership,val
     if(object.password){
       object.password = await bcrypt.hash(object.password,10)
     }
-    const inserted = db.insert(tableName,object)
+    const inserted =await db.insert(tableName,object)
     res.status(201).json({success : true,message:'data berhasil disimpan',data : inserted})    
-  } catch (error) {
-    next(error)
-  }
-
+    } catch (error) {
+      next(error)
+    }
 })
 // UPDATE DATA======================================================
-app.put('/api/:dbName/tables/:tableName/:id',authenticateToken,checkDbOwnership,valReqBody,async(req,res,next)=>{
+app.put('/api/db/:dbName/tables/:tableName/:id',authenticateToken,checkDbOwnership,valReqBody,async(req,res,next)=>{
   try {
     const {tableName,id} = req.params;
     const db = req.db;
     let updateData = {...req.body}
     if(updateData.password)updateData.password = await bcrypt.hash(String(updateData.password),10);
-    const updatedRow = db.update(tableName,id,updateData);
+    const updatedRow =await db.update(tableName,id,updateData);
     res.json({success:true,message:`Data dengan id '${id}' berhasil diperbaharui`,data:updatedRow})
   } catch (error) {
     next(error);
   }
 })
 // DELETE BY ID=========================================================
-app.delete('/api/:dbName/tables/:tableName/:id',authenticateToken,checkDbOwnership,(req,res,next)=>{
+app.delete('/api/db/:dbName/tables/:tableName/:id',authenticateToken,checkDbOwnership,async(req,res,next)=>{
   try {
     const {tableName,id} = req.params;
     const db = req.db;
-    db.delete(tableName,id);
+    await db.delete(tableName,id);
     res.json({success:true,message:`Data dengan id '${id}' berhasil dihapus dari tabel '${tableName}'`})
   } catch (error) {
     next(error);
   }
 })
-app.post('/api/logout',(req,res)=>{
+app.post('/api/db/:dbName/logout',authenticateToken,checkDbOwnership,async(req,res)=>{
+  const db=req.db
   const refreshToken = req.cookies.refreshToken
   if(refreshToken){
-    const refreshTable = systemDb.getTable('refresh_tokens')
+    const refreshTable = db.getTable('refresh_tokens')
     const savedToken = refreshTable.rows.find(t=>t.token === refreshToken)
-    if(savedToken)systemDb.delete('refresh_tokens',savedToken.id);
+    if(savedToken)db.delete('refresh_tokens',savedToken.id);
   }
   res.clearCookie('refreshToken')
   res.json({success:true,message:'Berhasil logout!'})
 })
 
-const refreshTokenTable=(systemDb)=>{
-  let table=systemDb.getTable('refreshTokens')
-  if(!table){
-    systemDb.createTable('refresh_tokens')
-    systemDb.addCols('refresh_tokens',[
-        {name:'id',type:'INT',req:true,pk:true,ai:true},
-        {name:'username',type:'VARCHAR(50)',req:true},
-        {name:'token',type:'TEXT',req:true}
-    ])
-  }
+const refreshTokenTable=async()=>{
+  const db=database('system')
+  let dbDoc=await db.getDatabase()
+    let result=dbDoc.tables.find(t=>t.name === 'refresh_tokens')
+    if(!result){await db.createTable('refresh_tokens')
+      await db.addCols('refresh_tokens',[
+    {name:'id',type:'INT',req:true,pk:true,ai:true},
+    {name:'username',type:'VARCHAR(50)',req:true},
+    {name:'token',type:'TEXT',req:true}
+  ])
+  dbDoc =await db.getDatabase()
+  result =await dbDoc.tables.find(t=>t.name === 'refresh_tokens')
 }
+  return result
+}
+app.get('/api/:dbname',(req,res,next)=>res.send('api ok'))
+
+// VIEW ROUTES=================================================
+app.get('/', (req, res) => res.render('index',{urlPath:req.path,title:'Home Page'}));
 
 app.use(errorHandler)
 

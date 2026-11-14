@@ -1,0 +1,30 @@
+
+        <h2>Create Database</h2>
+        <form id="dbForm">
+            <label for="dbname">Database</label>
+            <input type="text" name="dbname" id="dbname">
+            <button type="submit">Create</button>
+        </form>
+    </div>
+    <div>
+        <form id="table-form">
+            <label for="tablename">Table Name</label>
+            <input type="text" name="tablename" id="tablename">
+            <label for="colcount">Column Count</label>
+            <input type="number" name="colcount" id="colcount" value="1" style="width: 2rem;">
+            <button name="confirm" type="button">Confirmasi</button>
+            <table id="tabelinput">
+                <thead >
+                    <th> name</th>
+                    <th>type</th>
+                    <th>req</th>
+                    <th>pk</th>
+                    <th>ai</th>
+                </thead>
+                <tbody class="colinput">
+                </tbody>
+            </table>
+            <button type="submit">Create</button>
+        </form>
+    </div>
+    <script type="module" src="/scriptes/index.js"></script>
