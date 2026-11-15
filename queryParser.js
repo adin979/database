@@ -61,13 +61,29 @@ class SqlParser{
         const whereMatch=sql.trim().match(wherePatttern)
         if(whereMatch){
             const clause=whereMatch[1].trim()
-            const conditionPattern=/(\S+)\s*(=|>|<)\s*(['"]?)([^'"]+)\3/
+            const conditionPattern=/(\S+)\s*(=|>|<|LIKE)\s*(['"]?)([^'"]+)\3/
             const condMatch = clause.match(conditionPattern)
             if(condMatch){
                 const [,colRaw,operator,rawVal] = condMatch
                 const col = colRaw.includes('.')?colRaw.split('.')[1]:colRaw
                 const val = !isNaN(rawVal)?Number(rawVal):rawVal
                 rows = rows.filter(r=>{
+                    const cellValue = String(r[col]||'').toLocaleLowerCase()
+                    const searchVal = rawVal.toLocaleLowerCase()
+                    if(operator.toUpperCase() === 'LIKE'){
+                        if(searchVal.startsWith('%')&&searchVal.endsWith('%')){
+                            const keyword = searchVal.slice(1,-1)
+                            return cellValue.includes(keyword)
+                        }else if(searchVal.startsWith('%')){
+                            const keyword = searchVal.slice(1)
+                            return cellValue.includes(keyword)
+                        }else if(searchVal.endsWith('%')){
+                            const keyword = searchVal.slice(0,-1)
+                            return cellValue.includes(keyword)
+                        }else{
+                            return cellValue === searchVal
+                        }
+                    }
                     if(operator === '=')String(r[col])===String(val);
                     if(operator === '<')String(r[col])<String(val);
                     if(operator === '>')String(r[col])>String(val);
