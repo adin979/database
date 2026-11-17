@@ -122,8 +122,9 @@ app.post('/api/:dbName/login',valReqBody,async(req,res,next)=>{
 
       res.cookie('refreshToken',refreshToken,{
         httpOnly:true,
-        secure:false,
-        sameSite:'strict',
+        secure:true,
+        sameSite:'none',
+        path:'/',
         maxAge:7*24*60*60*1000
       })
 
