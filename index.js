@@ -239,7 +239,6 @@ app.post('/api/databases',authenticateToken,valReqBody,async(req,res,next)=>{
 app.post('/api/db/:dbName',authenticateToken,checkDbOwnership,valReqBody,(req,res,next)=>{
   const db = req.db
   const {query} = req.body
-  console.log('query : ',query)
   const queryParser = new SqlParser(db)
   return queryParser.query(query)
   .then(result=>{

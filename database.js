@@ -96,9 +96,9 @@ export function database(dbName){
         async insert(tableName,inputData){
             const dbDoc=await this.getDatabase()
             const table = dbDoc.tables.find(t=>t.name===tableName)
-            console.log('inputData : ',table)
             if(!table) throw new Error(`Tabel ${tableName} tidak ditemukan!`);
             const allowedcols = table.cols.map(c=>c.name)
+            console.log('inputData : ',allowedcols)
             const objects=Array.isArray(inputData)?inputData:[inputData]
             const insertedRecord=[]
             for(const object of objects){
