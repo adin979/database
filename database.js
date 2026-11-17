@@ -149,7 +149,6 @@ export function database(dbName){
                         case 'BOOLEAN':
                             if(typeof value !== 'boolean')throw new Error('harus boolean')
                     }
-            console.log('inputData : ',value)
                     if(col.hash)object[col.name]=await bcrypt.hash(value,10)
                 }
                 const pkCol = table.cols.find(c=>c.pk)
