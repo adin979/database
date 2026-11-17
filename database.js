@@ -97,7 +97,6 @@ export function database(dbName){
             const dbDoc=await this.getDatabase()
             const table = dbDoc.tables.find(t=>t.name===tableName)
             if(!table) throw new Error(`Tabel ${tableName} tidak ditemukan!`);
-            console.log('inputData : ',table.cols.map(c=>c.name))
             const allowedcols = table.cols.map(c=>c.name)
             const objects=Array.isArray(inputData)?inputData:[inputData]
             const insertedRecord=[]
@@ -115,6 +114,7 @@ export function database(dbName){
                 }
 
                 const inputKeys = Object.keys(object)
+            console.log('inputData : ',inputKeys)
                 for(const key of inputKeys){
                     if(!allowedcols.includes(key))throw new Error(`field ${key} belum dibuat`)
                 }
