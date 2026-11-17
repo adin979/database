@@ -124,6 +124,7 @@ class SqlParser{
                         filteredRow[c]=row[colName]
                     }
                 })
+                if(Object.keys(filteredRow).length<1)throw new Error('Data tidak ditemukan')
                 return filteredRow
             })
         }
