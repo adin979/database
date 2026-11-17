@@ -112,6 +112,7 @@ export function database(dbName){
                         }
                     }
                 }
+            console.log('inputData : ',inputData)
 
                 const inputKeys = Object.keys(object)
                 for(const key of inputKeys){
@@ -156,7 +157,6 @@ export function database(dbName){
                 table.rows.push(object)
                 insertedRecord.push(object)
             }
-            console.log(inputData)
         await dbDoc.save()
         return insertedRecord
         },
