@@ -96,6 +96,7 @@ export function database(dbName){
         async insert(tableName,inputData){
             const dbDoc=await this.getDatabase()
             const table = dbDoc.tables.find(t=>t.name===tableName)
+            console.log('inputData : ',table)
             if(!table) throw new Error(`Tabel ${tableName} tidak ditemukan!`);
             const allowedcols = table.cols.map(c=>c.name)
             const objects=Array.isArray(inputData)?inputData:[inputData]
@@ -112,7 +113,6 @@ export function database(dbName){
                         }
                     }
                 }
-            console.log('inputData : ',inputData)
 
                 const inputKeys = Object.keys(object)
                 for(const key of inputKeys){
