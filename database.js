@@ -94,7 +94,6 @@ export function database(dbName){
         },
 
         async insert(tableName,inputData){
-            console.log(inputData)
             const dbDoc=await this.getDatabase()
             const table = dbDoc.tables.find(t=>t.name===tableName)
             if(!table) throw new Error(`Tabel ${tableName} tidak ditemukan!`);
@@ -157,6 +156,7 @@ export function database(dbName){
                 table.rows.push(object)
                 insertedRecord.push(object)
             }
+            console.log(inputData)
         await dbDoc.save()
         return insertedRecord
         },
