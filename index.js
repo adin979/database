@@ -15,13 +15,22 @@ import SqlParser from './queryParser.js';
 const app = express();
 const port = process.env.PORT|| 3000;
 app.use(express.json())
+app.use(cookieParser())
+
+const allowedOrigin=[
+'http://localhost:5173',
+'https://backend-vert-two-26.vercel.app'
+]
 app.use(cors({
-  origin:'http://localhost:5173',
+  origin:function(origin,callback){
+    if(!origin)return callback(null,true);
+    if(allowedOrigin.includes(origin)){return callback(null,true)}
+    else{return callback(new Error('Diblokir CORS'))}
+  },
   credentials:true,
   methods:['GET','POST','PUT','DELETE','OPTIONS'],
   allowedHeaders:['Content-type','Authorization']
 }))
-app.use(cookieParser())
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
