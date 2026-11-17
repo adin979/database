@@ -97,7 +97,7 @@ export function database(dbName){
             const dbDoc=await this.getDatabase()
             const table = dbDoc.tables.find(t=>t.name===tableName)
             if(!table) throw new Error(`Tabel ${tableName} tidak ditemukan!`);
-            console.log('inputData : ',table.col.map(c=>c.name))
+            console.log('inputData : ',table.cols.map(c=>c.name))
             const allowedcols = table.cols.map(c=>c.name)
             const objects=Array.isArray(inputData)?inputData:[inputData]
             const insertedRecord=[]
