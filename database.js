@@ -150,7 +150,7 @@ export function database(dbName){
                         case 'BOOLEAN':
                             if(typeof value !== 'boolean')throw new Error('harus boolean')
                     }
-                    if(col.hash)object[col.name]=await bcrypt.hash(value)
+                    if(col.hash)object[col.name]=await bcrypt.hash(value,10)
                 }
                 const pkCol = table.cols.find(c=>c.pk)
                 if(pkCol && !object[pkCol.name])throw new Error(`Isi primery key ${pkCol.name}`);
