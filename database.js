@@ -1,4 +1,5 @@
 import {mongoose, connectDB } from './connection.js';
+import bcrypt from 'bcrypt'
 
 const dynamicDbSchema = new mongoose.Schema({
     name:{type:String,required:true,unique:true},
@@ -125,6 +126,7 @@ export function database(dbName){
                     }
                     if((col.req || col.pk) && (value === undefined || value === null || value  === ''))throw new Error('Field tidak bolehkosong!');
                     if(value === undefined || value === null)continue;
+                    
 
                     const typeMatch = col.type.match(/^([A-Z]+)(?:\((\d+)\))?$/)
                     const baseType = typeMatch ? typeMatch[1]:col.type
@@ -146,9 +148,10 @@ export function database(dbName){
                         case 'BOOL':
                         case 'BOOLEAN':
                             if(typeof value !== 'boolean')throw new Error('harus boolean')
-                            }
                     }
-                    const pkCol = table.cols.find(c=>c.pk)
+                    if(col.hash)object[col.name]=await bcrypt.hash(value)
+                }
+                const pkCol = table.cols.find(c=>c.pk)
                 if(pkCol && !object[pkCol.name])throw new Error(`Isi primery key ${pkCol.name}`);
                 table.rows.push(object)
                 insertedRecord.push(object)
