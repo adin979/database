@@ -163,6 +163,7 @@ class SqlParser{
             cols.forEach((col,index)=>newRecord[col] = valRows[index])
             allRecord.push(newRecord)
         }
+        console.log('insert sql : ',allRecord)
             return this.db.insert(tableName,allRecord)
             .then(result=>result)
     }
