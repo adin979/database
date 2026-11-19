@@ -14,9 +14,8 @@ import 'dotenv/config'
 const app = express();
 const port = process.env.PORT|| 3000;
 app.use(express.json())
-const allowedOrigins=process.env.ALLOWED_ORIGINS?
-  process.env.ALLOWED_ORIGINS.split(',').map(s=>s.trim()):[]
-  console.log(allowedOrigins)
+const allowedOrigins=process.env.ALLOWED_ORIGINS?process.env.ALLOWED_ORIGINS.split(',').map(s=>s.trim()):[]
+  console.log(process.env.ALLOWED_ORIGINS)
 app.use(cors({
   origin:function(origin,callback){
     if(!origin)return callback(null,true);
