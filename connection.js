@@ -18,9 +18,6 @@ export const connectDB = async () => {
     }
 
     await connectionPromise;
-
-    console.log('MongoDB connected');
-
     return mongoose.connection;
 };
 export {mongoose}

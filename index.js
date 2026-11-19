@@ -5,7 +5,6 @@ import { CloudDatabaseModel, database } from './database.js';
 import { authenticateToken, valReqBody,errorHandler,checkDbOwnership } from './middleware.js';
 import cors from 'cors'
 import cookieParser from 'cookie-parser'
-import {connectDB} from './connection.js';
 import path from 'path'
 import { fileURLToPath } from 'url';
 import SqlParser from './queryParser.js';
@@ -15,22 +14,19 @@ import SqlParser from './queryParser.js';
 const app = express();
 const port = process.env.PORT|| 3000;
 app.use(express.json())
-app.use(cookieParser())
-
-const allowedOrigin=[
-'http://localhost:5173',
-'https://backend-vert-two-26.vercel.app'
-]
+const allowedOrigins=process.env.ALLOWED_ORIGINS?
+  ALLOWED_ORIGINS.split(',').map(s=>s.trim()):[]
 app.use(cors({
   origin:function(origin,callback){
     if(!origin)return callback(null,true);
-    if(allowedOrigin.includes(origin)){return callback(null,true)}
+    if(allowedOrigins.includes(origin)){return callback(null,true)}
     else{return callback(new Error('Diblokir CORS'))}
   },
   credentials:true,
   methods:['GET','POST','PUT','DELETE','OPTIONS'],
   allowedHeaders:['Content-type','Authorization']
 }))
+app.use(cookieParser())
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -38,8 +34,7 @@ app.set('views',path.join(__dirname,'views'))
 app.set('view engine','ejs')
 app.use(express.static(path.join(__dirname, 'public')));
 
-async function initSystemDb() {
-  await connectDB()
+async function initSystemDb() {  
   try {
     const db = database('system')
     let systemDb 
@@ -50,18 +45,18 @@ async function initSystemDb() {
       systemDb=await db.getDatabase()
       console.log('Database sistem berhasil dibuat')
     }
+    try{
       const userTable=await db.getTable('user')
-      if(!userTable){
-        await db.createTable('user');
-        await db.addCols('user',[
-          {name:'id',type:'INT',req:true,uniq:true,pk:true,ai:true},
-          {name:'username',type:'VARCHAR(50)',req:true,uniq:true,pk:false,ai:false},
-          {name:'password',type:'TEXT',req:true,pk:false,ai:false}
-        ])
-      }else{console.log('table sudah ada')}
+    }catch{
+      await db.createTable('user');
+    }
+      await db.addCols('user',[
+        {name:'id',type:'INT',req:true,uniq:true,pk:true,ai:true},
+        {name:'username',type:'VARCHAR(50)',req:true,uniq:true,pk:false,ai:false},
+        {name:'password',type:'TEXT',req:true,pk:false,ai:false}
+      ])
     } catch (error) {
-      const db=await db.getTable('user')
-    console.error('Gagal inisiasi system DB : ',db)
+    console.error('Gagal inisiasi system DB : ')
   }
 }
 await initSystemDb()
@@ -75,7 +70,7 @@ app.post('/api/:dbName/register',valReqBody,async(req,res,next)=>{
   try {
     const {dbName}=req.params
     const {username,password}=req.body
-    await connectDB()
+    
     const db=database(dbName)
     const userTable=await db.getTable('user');
     const existingUser=userTable.rows.find(u=>u.username === username);
@@ -98,7 +93,7 @@ app.post('/api/:dbName/login',valReqBody,async(req,res,next)=>{
   try{
     const {dbName}=req.params
     const {username,password} = req.body
-    await connectDB()
+    
     const db=database(dbName)
     let dbDoc = await db.getDatabase()
     const userTable =dbDoc.tables.find(t=>t.name === 'user')
@@ -145,7 +140,7 @@ app.post('/api/:dbName/refresh-token',async(req,res)=>{
   const {dbName}=req.params
   const refreshToken = req.cookies.refreshToken
   if(!refreshToken)return res.status(401).json({success:false,error:'refresh cookie tidak ditemukan'});
-  await connectDB()
+  
   const db=database(dbName)
   const dbDoc = await db.getDatabase()
   const refreshTable = dbDoc.tables.find(t=>t.name === 'refresh_tokens') 
@@ -171,10 +166,15 @@ app.post('/api/:dbName/refresh-token',async(req,res)=>{
 app.get('/api/databases',authenticateToken,async(req,res,next)=>{
   try {
     const currentUser=req.user.username
-    await connectDB()
-    const data = await CloudDatabaseModel.findOne({owner:currentUser})
-    if(!data)return res.status(404).json({success:false,error:'Data tidak bisa ditemukan'})
-    return res.json({success:true,message:'Data berhasil ditemukan',databases:data})
+    const data = await CloudDatabaseModel.find({owner:currentUser})
+    if(!data)return res.status(404).json({success:false,error:'Data tidak bisa ditemukan'});
+    const databases=[]
+    Object.values(data).map(d=>{
+      const tables=[]
+      Object.values(d.tables).map(t=>tables.push(t.name))
+      databases.push({name:d.name,tables:tables})
+  });
+    return res.json({success:true,message:'Data berhasil ditemukan',data:databases})
   } catch (error) {
     next(error)
   }

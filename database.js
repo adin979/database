@@ -15,9 +15,15 @@ const dynamicDbSchema = new mongoose.Schema({
 
 export const CloudDatabaseModel = mongoose.models.CloudDatabase || mongoose.model('CloudDatabase', dynamicDbSchema)
 
-
 export function database(dbName){
-    connectDB()
+    async function connection() {
+        try {
+            await connectDB()
+        } catch (error) {
+            console.error(error);
+        }
+    }
+    connection()
     return{
         name:dbName,
         async createDatabase(ownerUserName){
@@ -32,7 +38,7 @@ export function database(dbName){
             return await newDbDoc.save();
         },
         async getDatabase(){
-            await connectDB()
+            
             const dbDoc = await CloudDatabaseModel.findOne({name:this.name})
             if(!dbDoc)throw new Error(`Database ${this.name} tidak ditemukan`);
             return dbDoc;
@@ -83,16 +89,18 @@ export function database(dbName){
         async addCols(tableName,colVal){
             const dbDoc = await this.getDatabase()
             const table = dbDoc.tables.find(t=>t.name === tableName)
-            if(!table)throw new Error('Table '+tableName+' tidak ditemukan!')
-            if(Array.isArray(colVal)){colVal.forEach(c=>{
+            if(!table)throw new Error('Table '+tableName+' tidak ditemukan!');
+            Array.isArray(colVal)?colVal:[colVal]
+            const existingColNames=new Set(table.cols.map(c=>c.toLowerCase().trim()))
+            colVal.forEach(c=>{
+                const colNameClean=c.name.toLowerCase().trim()
+                if(!colNameClean)throw new Error(`Kolom nama tidak boleh kosong!!`)
+                if(existingColNames.has(colNameClean))throw new Error(`Colom ${colNameClean} sudah ada di table ${table}!`)
                 table.cols.push(c)
-            })}else{
-                table.cols.push(colVal)
-            }
+            })
             await dbDoc.save()
             return dbDoc.tables.find(t=>t.name === tableName)
         },
-
         async insert(tableName,inputData){
             const dbDoc=await this.getDatabase()
             const table = dbDoc.tables.find(t=>t.name===tableName)

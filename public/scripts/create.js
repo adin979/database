@@ -45,11 +45,13 @@ export default function create(){
         const fields=[
             {key:'name',tag:'input',type:'text',require:true},
             {key:'type',tag:'select',options:['INT', 'VARCHAR(255)', 'TEXT', 'BOOLEAN', 'DATE', 'TIMESTAMP']},
-            {key:'req',tag:'input',type:'checkbox',value:true},
-            {key:'uniq',tag:'input',type:'checkbox',value:true},
-            {key:'pk',tag:'input',type:'checkbox',value:true},
-            {key:'ai',tag:'input',type:'checkbox',value:true}
+            {key:'req',tag:'input',type:'checkbox',value:false},
+            {key:'uniq',tag:'input',type:'checkbox',value:false},
+            {key:'hash',tag:'input',type:'checkbox',value:false},
+            {key:'pk',tag:'input',type:'checkbox',value:false},
+            {key:'ai',tag:'input',type:'checkbox',value:false}
         ]
+        console.log('ok')
         const inputCount=(count)=>{
             colinput.innerHTML=''
             for (let i = 0; i < count; i++) {
@@ -88,6 +90,7 @@ export default function create(){
                     type:data[`type_${i+1}`],
                     req:e.target.elements[`req_${i+1}`].checked,
                     uniq:e.target.elements[`uniq_${i+1}`].checked,
+                    hash:e.target.elements[`hash_${i+1}`].checked,
                     pk:e.target.elements[`pk_${i+1}`].checked,
                     ai:e.target.elements[`ai_${i+1}`].checked,
                 })
