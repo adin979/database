@@ -1,13 +1,13 @@
 import express from 'express'
 import bcrypt from 'bcrypt'
 import jwt from 'jsonwebtoken'
-import { CloudDatabaseModel, database } from './database.js';
-import { authenticateToken, valReqBody,errorHandler,checkDbOwnership } from './middlewares.js';
+import { CloudDatabaseModel, database } from '../database.js';
+import { authenticateToken, valReqBody,errorHandler,checkDbOwnership } from '../middlewares.js';
 import cors from 'cors'
 import cookieParser from 'cookie-parser'
 import path from 'path'
 import { fileURLToPath } from 'url';
-import SqlParser from './queryParser.js';
+import SqlParser from '../queryParser.js';
 import 'dotenv/config'
 
 
@@ -16,7 +16,6 @@ const port = process.env.PORT|| 3000;
 app.use(express.json())
 const allowedOrigins=process.env.ALLOWED_ORIGINS?
   process.env.ALLOWED_ORIGINS.split(',').map(s=>s.trim()):[]
-console.log(allowedOrigins)
 app.use(cors({
   origin:function(origin,callback){
     if(!origin)return callback(null,true);
