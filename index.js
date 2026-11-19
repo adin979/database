@@ -2,7 +2,7 @@ import express from 'express'
 import bcrypt from 'bcrypt'
 import jwt from 'jsonwebtoken'
 import { CloudDatabaseModel, database } from './database.js';
-import { authenticateToken, valReqBody,errorHandler,checkDbOwnership } from './middleware.js';
+import { authenticateToken, valReqBody,errorHandler,checkDbOwnership } from './middlewares.js';
 import cors from 'cors'
 import cookieParser from 'cookie-parser'
 import path from 'path'
