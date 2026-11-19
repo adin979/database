@@ -8,7 +8,7 @@ import cookieParser from 'cookie-parser'
 import path from 'path'
 import { fileURLToPath } from 'url';
 import SqlParser from './queryParser.js';
-
+import 'dotenv/config'
 
 
 const app = express();
@@ -16,6 +16,7 @@ const port = process.env.PORT|| 3000;
 app.use(express.json())
 const allowedOrigins=process.env.ALLOWED_ORIGINS?
   process.env.ALLOWED_ORIGINS.split(',').map(s=>s.trim()):[]
+
 app.use(cors({
   origin:function(origin,callback){
     if(!origin)return callback(null,true);
