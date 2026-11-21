@@ -187,17 +187,16 @@ export function database(dbName){
             }
         },
         async update(tableName,fk,updateObj){
-            const table =await this.getTable(tableName);
+            const dbDoc=await this.getDatabase()
+            const table =dbDoc.tables.find(t=>t.name === tableName);
             if(!table)throw new Error('Tabel tidak ditemukan');
             const pkCol = table.cols.find(c=>c.pk);
-            if (!pkCol) {
-                throw new Error(`Tabel '${tableName}' tidak memiliki prymery key`);
-            }
+            if (!pkCol)throw new Error(`Tabel '${tableName}' tidak memiliki prymery key`);
             const rowIndex = table.rows.findIndex(r=>String(r[pkCol.name]) === String(fk));
             if(rowIndex === -1)throw new Error(`Data dengan ID '${fk}' tidak ditemukan`);
             delete updateObj[pkCol.name];
             table.rows[rowIndex] = {...table.rows[rowIndex],...updateObj}
-            await (this.getDatabase()).save()
+            await dbDoc.save()
             return table.rows[rowIndex]
         },
         async delete(tableName,fk){

@@ -175,8 +175,9 @@ class SqlParser{
             const [key,val]=i.split('=').map(s=>s.trim().replace(/^['"]|['"]$/g,''))
             updateData[key]=val
         })
-        const [,whereVal]=condition.split('=').map(s=>s.trim().replace(/^['"]|['"]$/g))
+        const [,whereVal]=condition.split('=').map(s=>s.trim().replace(/^['"]|['"]$/g,''))
         return this.db.update(tableName,whereVal,updateData)
+        .then(result=>result)
     }
     delete(sql){
         const pattern = /DELETE\s+FROM\s+(\w+)\s+WHERE\s+(.+)/i
